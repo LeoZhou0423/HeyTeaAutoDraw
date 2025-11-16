@@ -51,7 +51,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Generate logo.icns from logo.png
-        run: python -c "from icnsutil import IcnsFile; icns = IcnsFile(); icns.add_media('logo.png'); icns.write('logo.icns'); print('✅ Generated logo.icns')"
+        run: python -c "from icnsutil import IcnsFile; icns = IcnsFile(); icns.add_media(file='logo.png'); icns.write('logo.icns'); print('✅ Generated logo.icns')"
 
       - name: Build macOS .app bundle
         run: |
