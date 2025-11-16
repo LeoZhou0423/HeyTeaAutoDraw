@@ -1,0 +1,78 @@
+name: Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - '.github/workflows/windows.yml'
+
+jobs:
+  pyinstaller-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.9.9 (x64)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9.9'
+          architecture: 'x64'  # 明确指定64位架构
+
+      - name: Install system dependencies
+        run: |
+          # 安装VC++运行库
+          choco install -y vcredist2015
+          pip install --upgrade pip setuptools wheel
+
+      - name: Install pandas with workaround
+        run: |
+          # 先安装numpy确保ABI兼容
+          pip install numpy==1.21.6 --only-binary=:all:
+          
+          # 使用预编译的pandas轮子
+          pip install pandas==2.3.1 --only-binary=:all: --no-deps
+          
+          # 安装其他依赖
+          pip install pandas==2.3.1  # 这次带上依赖
+          pip install setuptools==58.0.4
+
+      - name: Install project dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Build executable
+        run: |
+          echo "=== Python版本 ==="
+          python --version
+          echo "=== PyInstaller版本 ==="
+          pyinstaller --version
+          
+          python -m PyInstaller -F -n main_app --paths=./sdk start.py
+          
+          copy sdk\.env dist\
+
+      - name: Create verified zip
+        shell: pwsh
+        run: |
+          $zipPath = "${{ runner.temp }}/build_artifact.zip"
+          $files = @(
+            "${{ github.workspace }}/dist/main_app.exe",
+            "${{ github.workspace }}/dist/.env"
+          )
+
+          Compress-Archive -Path $files -DestinationPath $zipPath -Force
+          Write-Output "zip_path=$zipPath" >> $env:GITHUB_ENV
+
+      - name: Upload verified zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: ${{ env.zip_path }}
+
+
+      - name: Create summary
+        run: |
+          echo "### 🎉 Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "- Python version: $(python --version)" >> $GITHUB_STEP_SUMMARY
+          echo "- Pandas version: $(pip show pandas | findstr Version)" >> $GITHUB_STEP_SUMMARY
+          echo "✔️ Windows 7+ compatible build" >> $GITHUB_STEP_SUMMARY
