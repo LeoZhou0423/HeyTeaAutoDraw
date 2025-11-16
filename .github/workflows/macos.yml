@@ -64,13 +64,20 @@ jobs:
           # 完全清理环境
           rm -rf __pycache__ build dist
           
-          # 构建可执行文件
+          # 使用目录打包生成.app文件，--windowed选项会自动创建.app包
           python -m PyInstaller \
-            --onefile \
+            --windowed \
             --name main_app \
             --clean \
             --noconfirm \
             --paths=./src \
+            --icon=logo.png \
+            --add-data="logo.png:." \
+            --exclude-module=pytest \
+            --exclude-module=unittest \
+            --exclude-module=doctest \
+            --exclude-module=jupyter \
+            --exclude-module=IPython \
             main.py
           
           # 验证架构
@@ -80,7 +87,8 @@ jobs:
       - name: Prepare artifacts
         run: |
           mkdir -p dist/macos_bundle
-          cp dist/main_app dist/macos_bundle/
+          # 确保复制.app文件
+          cp -r dist/main_app.app dist/macos_bundle/ 
           
           # 创建 ZIP 包
           cd dist && zip -r macos_bundle.zip macos_bundle/
