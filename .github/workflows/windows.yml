@@ -24,17 +24,9 @@ jobs:
           choco install -y vcredist2015
           pip install --upgrade pip setuptools wheel
 
-      - name: Install pandas with workaround
+      - name: Upgrade pip and install build dependencies
         run: |
-          # 先安装numpy确保ABI兼容
-          pip install numpy==1.21.6 --only-binary=:all:
-          
-          # 使用预编译的pandas轮子
-          pip install pandas==2.3.1 --only-binary=:all: --no-deps
-          
-          # 安装其他依赖
-          pip install pandas==2.3.1  # 这次带上依赖
-          pip install setuptools==58.0.4
+          pip install --upgrade pip setuptools wheel
 
       - name: Install project dependencies
         run: |
@@ -47,17 +39,14 @@ jobs:
           echo "=== PyInstaller版本 ==="
           pyinstaller --version
           
-          python -m PyInstaller -F -n main_app --paths=./sdk start.py
-          
-          copy sdk\.env dist\
+          python -m PyInstaller -F -n main_app --paths=./src main.py
 
       - name: Create verified zip
         shell: pwsh
         run: |
           $zipPath = "${{ runner.temp }}/build_artifact.zip"
           $files = @(
-            "${{ github.workspace }}/dist/main_app.exe",
-            "${{ github.workspace }}/dist/.env"
+            "${{ github.workspace }}/dist/main_app.exe"
           )
 
           Compress-Archive -Path $files -DestinationPath $zipPath -Force
@@ -74,5 +63,5 @@ jobs:
         run: |
           echo "### 🎉 Build Successful" >> $GITHUB_STEP_SUMMARY
           echo "- Python version: $(python --version)" >> $GITHUB_STEP_SUMMARY
-          echo "- Pandas version: $(pip show pandas | findstr Version)" >> $GITHUB_STEP_SUMMARY
-          echo "✔️ Windows 7+ compatible build" >> $GITHUB_STEP_SUMMARY
+          echo "- Dependencies installed from requirements.txt" >> $GITHUB_STEP_SUMMARY
+          echo "✔️ Windows compatible build" >> $GITHUB_STEP_SUMMARY
