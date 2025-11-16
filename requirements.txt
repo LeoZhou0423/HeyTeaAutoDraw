@@ -5,3 +5,4 @@ pyautogui
 pynput
 scikit-image
 Pillow
+pyinstaller
