@@ -50,13 +50,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Generate logo.icns from logo.png
-        run: |
-          python -c "
-from icnsutil import IcnsFile
-icns = IcnsFile.from_png('logo.png')
-icns.write('logo.icns')
-print('✅ Generated logo.icns')
-"
+        run: python -c "from icnsutil import IcnsFile; IcnsFile.from_png('logo.png').write('logo.icns'); print('✅ Generated logo.icns')"
 
       - name: Build macOS .app bundle
         run: |
@@ -69,7 +63,7 @@ print('✅ Generated logo.icns')
             --noconfirm \
             --paths=./src \
             --icon=logo.icns \
-            --add-data='logo.png:.' \
+            --add-data="logo.png:." \
             --exclude-module=pytest \
             --exclude-module=unittest \
             --exclude-module=doctest \
@@ -77,8 +71,7 @@ print('✅ Generated logo.icns')
             --exclude-module=IPython \
             main.py
 
-          # 验证二进制
-          BINARY='dist/main_app.app/Contents/MacOS/main_app'
+          BINARY="dist/main_app.app/Contents/MacOS/main_app"
           file "$BINARY"
           lipo -archs "$BINARY"
 
@@ -93,10 +86,8 @@ print('✅ Generated logo.icns')
         with:
           tag_name: V1.0
           files: dist/HeyTeaAutoDraw-macOS-x86_64.zip
-          append: true  # 关键：追加而非覆盖
+          append: true
           token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create summary
         run: |
