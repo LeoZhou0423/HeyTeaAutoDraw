@@ -8,6 +8,10 @@ on:
 jobs:
   build-macos:
     runs-on: macos-13
+    # 👇 关键修复：授予创建 Release 所需的写权限
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
         with:
