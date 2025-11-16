@@ -1,4 +1,5 @@
-name: macOS
+name: macOS Build and Attach to Release V1.0
+
 on:
   workflow_dispatch:
   push:
@@ -9,9 +10,6 @@ on:
 jobs:
   pyinstaller-build:
     runs-on: macos-13
-    strategy:
-      matrix:
-        node-version: [12.x]  # 虽然未使用，但保留原结构
     env:
       TZ: Asia/Shanghai
       PYTHON_VERSION: "3.9.9"
@@ -24,23 +22,15 @@ jobs:
 
       - name: Install x86_64 Python via pyenv
         run: |
-          # 安装编译依赖
           brew install openssl readline sqlite3 xz zlib tcl-tk
-          
-          # 安装 pyenv
           brew install pyenv
           echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
           echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
           echo 'eval "$(pyenv init --path)"' >> ~/.bashrc
           source ~/.bashrc
-          
-          # 强制安装 x86_64 版本 Python
           arch -x86_64 pyenv install $PYTHON_VERSION --verbose
           pyenv global $PYTHON_VERSION
-          
-          # 验证架构
           python -c "import platform; print('Python Arch:', platform.machine())"
-          which python
 
       - name: Set up Python PATH
         run: |
@@ -53,65 +43,65 @@ jobs:
           pip --version
           python -c "import platform; print(platform.machine())"
 
-      - name: Install build tools
+      - name: Install build tools and icnsutil
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install pyinstaller
+          pip install pyinstaller icnsutil
           pip install -r requirements.txt
 
-      - name: Build executable
+      - name: Generate logo.icns from logo.png
         run: |
-          # 完全清理环境
+          python -c "
+from icnsutil import IcnsFile
+icns = IcnsFile.from_png('logo.png')
+icns.write('logo.icns')
+print('✅ Generated logo.icns')
+"
+
+      - name: Build macOS .app bundle
+        run: |
           rm -rf __pycache__ build dist
           
-          # 使用 --windowed 生成 .app bundle
           python -m PyInstaller \
             --windowed \
             --name main_app \
             --clean \
             --noconfirm \
             --paths=./src \
-            --icon=logo.png \
-            --add-data="logo.png:." \
+            --icon=logo.icns \
+            --add-data='logo.png:.' \
             --exclude-module=pytest \
             --exclude-module=unittest \
             --exclude-module=doctest \
             --exclude-module=jupyter \
             --exclude-module=IPython \
             main.py
-          
-          # 验证生成的 .app 结构
-          ls -la dist/
-          
-          # 正确的可执行文件路径
-          BINARY="dist/main_app.app/Contents/MacOS/main_app"
-          
-          # 验证文件类型和架构
+
+          # 验证二进制
+          BINARY='dist/main_app.app/Contents/MacOS/main_app'
           file "$BINARY"
           lipo -archs "$BINARY"
 
-      - name: Prepare artifacts
+      - name: Prepare macOS artifact ZIP
         run: |
           mkdir -p dist/macos_bundle
-          # 复制整个 .app 包（这是用户双击运行的）
           cp -r dist/main_app.app dist/macos_bundle/
-          
-          # 创建 ZIP 包（保留 .app 结构）
-          cd dist && zip -r macos_bundle.zip macos_bundle/
+          cd dist && zip -r HeyTeaAutoDraw-macOS-x86_64.zip macos_bundle/
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload to Release V1.0 (append, not replace!)
+        uses: softprops/action-gh-release@v2
         with:
-          name: macos-x86_64-build
-          path: dist/macos_bundle.zip
+          tag_name: V1.0
+          files: dist/HeyTeaAutoDraw-macOS-x86_64.zip
+          append: true  # 关键：追加而非覆盖
+          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create summary
         run: |
           BINARY="dist/main_app.app/Contents/MacOS/main_app"
-          echo "### 🖥️ macOS Build Report" >> $GITHUB_STEP_SUMMARY
-          echo "- Python: $(python --version)" >> $GITHUB_STEP_SUMMARY
-          echo "- Binary Architecture: $(lipo -archs "$BINARY")" >> $GITHUB_STEP_SUMMARY
-          echo "- Size: $(du -h "$BINARY" | cut -f1)" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
-          file "$BINARY" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "### 🖥️ macOS Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Architecture: $(lipo -archs "$BINARY")" >> $GITHUB_STEP_SUMMARY
+          echo "- Binary size: $(du -h "$BINARY" | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- Uploaded to Release **V1.0** as additional asset." >> $GITHUB_STEP_SUMMARY
