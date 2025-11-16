@@ -43,12 +43,20 @@ jobs:
           pip --version
           python -c "import platform; print(platform.machine())"
 
-      - name: Install build tools and icnsutil
+      - name: Install build tools
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install pyinstaller
-          pip install "icnsutil>=1.0"
+          pip install pyinstaller pillow icnsutil
           pip install -r requirements.txt
+
+      - name: Re-save logo.png as clean RGBA PNG (for icnsutil compatibility)
+        run: |
+          python -c "
+from PIL import Image
+img = Image.open('logo.png').convert('RGBA')
+img.save('logo_clean.png', 'PNG')
+"
+          mv logo_clean.png logo.png
 
       - name: Generate logo.icns from logo.png
         run: python -c "from icnsutil import IcnsFile; icns = IcnsFile(); icns.add_media(file='logo.png'); icns.write('logo.icns'); print('✅ Generated logo.icns')"
