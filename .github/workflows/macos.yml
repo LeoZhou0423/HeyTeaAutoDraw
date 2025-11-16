@@ -55,37 +55,32 @@ jobs:
 
       - name: Install build tools
         run: |
-          pip install --upgrade pip
-          pip install pyinstaller==5.7.0
+          pip install --upgrade pip setuptools wheel
+          pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Build x86_64 executable
+      - name: Build executable
         run: |
           # 完全清理环境
           rm -rf __pycache__ build dist
           
-          # 强制 x86_64 编译环境
-          export ARCHFLAGS="-arch x86_64"
-          export CC="clang -arch x86_64"
-          export CXX="clang++ -arch x86_64"
-          
           # 构建可执行文件
           python -m PyInstaller \
             --onefile \
-            --name start_macos \
+            --name main_app \
             --clean \
             --noconfirm \
-            start.py
+            --paths=./src \
+            main.py
           
           # 验证架构
-          file dist/start_macos
-          lipo -archs dist/start_macos
+          file dist/main_app
+          lipo -archs dist/main_app
 
       - name: Prepare artifacts
         run: |
           mkdir -p dist/macos_bundle
-          cp dist/start_macos dist/macos_bundle/
-          cp sdk/.env dist/macos_bundle/
+          cp dist/main_app dist/macos_bundle/
           
           # 创建 ZIP 包
           cd dist && zip -r macos_bundle.zip macos_bundle/
@@ -98,10 +93,10 @@ jobs:
 
       - name: Create summary
         run: |
-          echo "### 🖥️ x86_64 Build Report" >> $GITHUB_STEP_SUMMARY
+          echo "### 🖥️ macOS Build Report" >> $GITHUB_STEP_SUMMARY
           echo "- Python: $(python --version)" >> $GITHUB_STEP_SUMMARY
-          echo "- Binary Architecture: $(lipo -archs dist/start_macos)" >> $GITHUB_STEP_SUMMARY
-          echo "- Size: $(du -h dist/start_macos | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- Binary Architecture: $(lipo -archs dist/main_app)" >> $GITHUB_STEP_SUMMARY
+          echo "- Size: $(du -h dist/main_app | cut -f1)" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
-          file dist/start_macos >> $GITHUB_STEP_SUMMARY
+          file dist/main_app >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
