@@ -93,7 +93,3 @@ python main.py
 - 使用面向对象编程，避免全局变量
 - 为所有函数添加清晰的文档字符串
 - 遵循Python PEP8代码风格规范
-
-## 许可证
-
-MIT License
