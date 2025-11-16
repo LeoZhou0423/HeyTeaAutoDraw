@@ -46,14 +46,16 @@ jobs:
       - name: Install build tools
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install pyinstaller pillow icnsutil
+          pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Re-save logo.png as clean RGBA PNG
-        run: python -c "from PIL import Image; img = Image.open('logo.png').convert('RGBA'); img.save('logo_clean.png', 'PNG')" && mv logo_clean.png logo.png
-
-      - name: Generate logo.icns from logo.png
-        run: python -c "from icnsutil import IcnsFile; icns = IcnsFile(); icns.add_media(file='logo.png'); icns.write('logo.icns'); print('✅ Generated logo.icns')"
+      - name: Verify logo.icns exists
+        run: |
+          if [ ! -f logo.icns ]; then
+            echo "❌ logo.icns not found in repository root!"
+            exit 1
+          fi
+          echo "✅ Using existing logo.icns"
 
       - name: Build macOS .app bundle
         run: |
@@ -66,7 +68,7 @@ jobs:
             --noconfirm \
             --paths=./src \
             --icon=logo.icns \
-            --add-data='logo.png:.' \
+            --add-data='logo.icns:.' \
             --exclude-module=pytest \
             --exclude-module=unittest \
             --exclude-module=doctest \
