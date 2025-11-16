@@ -46,16 +46,24 @@ jobs:
       - name: Install build tools and icnsutil
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install pyinstaller icnsutil
+          pip install pyinstaller
+          pip install "icnsutil>=1.0"
           pip install -r requirements.txt
 
       - name: Generate logo.icns from logo.png
-        run: python -c "from icnsutil import IcnsFile; IcnsFile.from_png('logo.png').write('logo.icns'); print('✅ Generated logo.icns')"
+        run: |
+          python -c "
+from icnsutil import IcnsFile
+icns = IcnsFile()
+icns.add_media('logo.png')
+icns.write('logo.icns')
+print('✅ Generated logo.icns')
+"
 
       - name: Build macOS .app bundle
         run: |
           rm -rf __pycache__ build dist
-          
+
           python -m PyInstaller \
             --windowed \
             --name main_app \
@@ -63,7 +71,7 @@ jobs:
             --noconfirm \
             --paths=./src \
             --icon=logo.icns \
-            --add-data="logo.png:." \
+            --add-data='logo.png:.' \
             --exclude-module=pytest \
             --exclude-module=unittest \
             --exclude-module=doctest \
@@ -71,9 +79,9 @@ jobs:
             --exclude-module=IPython \
             main.py
 
-          BINARY="dist/main_app.app/Contents/MacOS/main_app"
-          file "$BINARY"
-          lipo -archs "$BINARY"
+          BINARY='dist/main_app.app/Contents/MacOS/main_app'
+          file \"$BINARY\"
+          lipo -archs \"$BINARY\"
 
       - name: Prepare macOS artifact ZIP
         run: |
