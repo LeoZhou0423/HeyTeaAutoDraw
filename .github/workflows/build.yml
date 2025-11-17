@@ -9,6 +9,7 @@ on:
       - 'main.py'
       - 'requirements.txt'
       - 'logo.icns'
+      - 'logo.ico'
 
 jobs:
   build:
@@ -18,11 +19,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
+            platform: Windows
             python-version: '3.9.9'
             app-name: 喜贴绘制工具
             icon: logo.ico
             zip-name: HeyTeaAutoDraw-windows-x64.zip
           - os: macos-13
+            platform: macOS
             python-version: '3.9.9'
             app-name: 喜贴绘制工具
             icon: logo.icns
@@ -42,8 +45,17 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         shell: bash
 
-      - name: Verify logo.icns exists (macOS only)
-        if: matrix.os == 'macos-13'
+      - name: Verify logo.ico exists (Windows)
+        if: matrix.platform == 'Windows'
+        run: |
+          if [ ! -f logo.ico ]; then
+            echo "❌ Missing logo.ico!"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Verify logo.icns exists (macOS)
+        if: matrix.platform == 'macOS'
         run: |
           if [ ! -f logo.icns ]; then
             echo "❌ Missing logo.icns!"
@@ -53,9 +65,13 @@ jobs:
 
       - name: Build executable
         run: |
-          echo "Building for ${{ matrix.os }}"
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            python -m PyInstaller -F -n "${{ matrix.app-name }}" --paths=./src main.py
+          if [ "${{ matrix.platform }}" = "Windows" ]; then
+            python -m PyInstaller \
+              -F \
+              -n "${{ matrix.app-name }}" \
+              --icon="${{ matrix.icon }}" \
+              --paths=./src \
+              main.py
           else
             python -m PyInstaller \
               --windowed \
@@ -68,14 +84,12 @@ jobs:
           fi
         shell: bash
 
-      - name: Package as ZIP with correct internal name
+      - name: Package as ZIP
         run: |
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            # Windows: exe is already named correctly in dist/
+          if [ "${{ matrix.platform }}" = "Windows" ]; then
             cd dist
             7z a "../${{ matrix.zip-name }}" "${{ matrix.app-name }}.exe"
           else
-            # macOS: .app bundle is a directory
             cd dist
             zip -r "../${{ matrix.zip-name }}" "${{ matrix.app-name }}.app"
           fi
@@ -84,7 +98,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-build
+          name: ${{ matrix.platform }}
           path: ${{ github.workspace }}/${{ matrix.zip-name }}
 
   release:
@@ -98,8 +112,10 @@ jobs:
         with:
           path: artifacts
 
-      - name: List downloaded files
-        run: ls -R artifacts
+      - name: Flatten ZIP files
+        run: |
+          mkdir -p release-assets
+          find artifacts -name "*.zip" -exec cp {} release-assets/ \;
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -107,5 +123,5 @@ jobs:
           tag_name: V1.0
           name: Release V1.0
           files: |
-            artifacts/HeyTeaAutoDraw-windows-x64.zip
-            artifacts/HeyTeaAutoDraw-macOS-x64.zip
+            release-assets/HeyTeaAutoDraw-windows-x64.zip
+            release-assets/HeyTeaAutoDraw-macOS-x64.zip
