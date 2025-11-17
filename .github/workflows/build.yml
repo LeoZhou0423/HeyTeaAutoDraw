@@ -8,7 +8,7 @@ on:
       - '.github/workflows/build.yml'
       - 'main.py'
       - 'requirements.txt'
-      - 'logo.icns'  # 仅 macOS 需要，但放在这里便于触发
+      - 'logo.icns'
 
 jobs:
   build:
@@ -22,55 +22,42 @@ jobs:
             architecture: 'x64'
             app-name: main_app
             icon: ''
+            asset-name: main_app-windows-x64.zip
           - os: macos-13
-            python-version: '3.x'  # 或指定如 3.9.9
+            python-version: '3.9.9'
             architecture: 'x64'
             app-name: HeyTeaAutoDraw
             icon: logo.icns
-
-    permissions:
-      contents: write  # 用于 macOS 发布 Release
+            asset-name: HeyTeaAutoDraw-macOS-x64.zip
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # macOS 需要显式指定 x64 架构（ARM 默认）
-          architecture: ${{ matrix.architecture }}
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
 
-      - name: Install system dependencies (Windows only)
-        if: matrix.os == 'windows-latest'
+      # 安装依赖（跨平台兼容）
+      - name: Install dependencies
         run: |
-          choco install -y vcredist2015
-          pip install --upgrade pip setuptools wheel
-
-      - name: Upgrade pip and install PyInstaller (macOS fallback)
-        if: matrix.os == 'macos-13'
-        run: |
-          python -m pip install --upgrade pip setuptools wheel pyinstaller
-
-      - name: Install project dependencies
-        run: |
+          python -m pip install --upgrade pip setuptools wheel
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        shell: bash  # 强制使用 bash，即使在 Windows 上（GitHub Actions 提供）
 
       - name: Verify logo.icns exists (macOS only)
         if: matrix.os == 'macos-13'
         run: |
           if [ ! -f logo.icns ]; then
-            echo "❌ Missing logo.icns in repository root!"
+            echo "❌ Missing logo.icns!"
             exit 1
           fi
-          echo "✅ Found logo.icns"
+        shell: bash
 
       - name: Build executable
         run: |
-          echo "=== Building for ${{ matrix.os }} ==="
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+          echo "Building for ${{ matrix.os }}"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
             python -m PyInstaller -F -n ${{ matrix.app-name }} --paths=./src main.py
           else
             python -m PyInstaller \
@@ -82,43 +69,48 @@ jobs:
               --add-data='logo.icns:.' \
               main.py
           fi
+        shell: bash
 
-      - name: Package as ZIP (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
+      - name: Package as ZIP
         run: |
-          $zipPath = "${{ runner.temp }}/build_artifact.zip"
-          $files = @( "${{ github.workspace }}/dist/${{ matrix.app-name }}.exe" )
-          Compress-Archive -Path $files -DestinationPath $zipPath -Force
-          echo "zip_path=$zipPath" >> $env:GITHUB_ENV
-
-      - name: Package as ZIP (macOS)
-        if: matrix.os == 'macos-13'
-        run: |
-          cd dist
-          zip -r ../${{ matrix.app-name }}-macOS-x86_64.zip ${{ matrix.app-name }}.app
-          echo "zip_path=${{ github.workspace }}/${{ matrix.app-name }}-macOS-x86_64.zip" >> $GITHUB_ENV
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cd dist
+            7z a ../${{ matrix.asset-name }} ${{ matrix.app-name }}.exe
+          else
+            cd dist
+            zip -r ../${{ matrix.asset-name }} ${{ matrix.app-name }}.app
+          fi
+        shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-build
-          path: ${{ env.zip_path }}
+          path: ${{ github.workspace }}/${{ matrix.asset-name }}
 
-      - name: Create Release V1.0 and Upload Asset (macOS only)
-        if: matrix.os == 'macos-13'
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: V1.0
-          name: macOS
+          name: Release V1.0
           body: |
-            🖥️ macOS x86_64 standalone application  
-            Built on ${{ runner.os }} with Python ${{ matrix.python-version }}
-          files: ${{ env.zip_path }}
-
-      - name: Create summary
-        run: |
-          echo "### 🎉 Build Successful on ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Python version: $(python --version)" >> $GITHUB_STEP_SUMMARY
-          echo "- App name: ${{ matrix.app-name }}" >> $GITHUB_STEP_SUMMARY
-          echo "✔️ Build completed" >> $GITHUB_STEP_SUMMARY
+            🚀 Cross-platform builds:
+            - Windows x64 (standalone .exe in ZIP)
+            - macOS x64 (.app bundle in ZIP)
+          files: |
+            artifacts/windows-latest-build/main_app-windows-x64.zip
+            artifacts/macos-13-build/HeyTeaAutoDraw-macOS-x64.zip
