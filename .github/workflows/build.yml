@@ -20,13 +20,13 @@ jobs:
           - os: windows-latest
             python-version: '3.9.9'
             app-name: 喜贴绘制工具
-            icon: ''
-            zip-name: 喜贴绘制工具-windows-x64.zip
+            icon: logo.ico
+            zip-name: HeyTeaAutoDraw-windows-x64.zip
           - os: macos-13
             python-version: '3.9.9'
             app-name: 喜贴绘制工具
             icon: logo.icns
-            zip-name: 喜贴绘制工具-macOS-x64.zip
+            zip-name: HeyTeaAutoDraw-macOS-x64.zip
 
     steps:
       - uses: actions/checkout@v4
@@ -106,10 +106,6 @@ jobs:
         with:
           tag_name: V1.0
           name: Release V1.0
-          body: |
-            🎨 喜贴绘制工具 v1.0  
-            - Windows x64: 解压后运行 **喜贴绘制工具.exe**  
-            - macOS x64: 解压后将 **喜贴绘制工具.app** 拖入 Applications 使用
           files: |
-            artifacts/windows-latest-build/喜贴绘制工具-windows-x64.zip
-            artifacts/macos-13-build/喜贴绘制工具-macOS-x64.zip
+            artifacts/HeyTeaAutoDraw-windows-x64.zip
+            artifacts/HeyTeaAutoDraw-macOS-x64.zip
