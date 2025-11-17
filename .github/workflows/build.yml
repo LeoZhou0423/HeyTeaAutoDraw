@@ -21,12 +21,12 @@ jobs:
             python-version: '3.9.9'
             app-name: 喜贴绘制工具
             icon: ''
-            output-file: 喜贴绘制工具.exe
+            zip-name: 喜贴绘制工具-windows-x64.zip
           - os: macos-13
             python-version: '3.9.9'
             app-name: 喜贴绘制工具
             icon: logo.icns
-            output-file: 喜贴绘制工具.app
+            zip-name: 喜贴绘制工具-macOS-x64.zip
 
     steps:
       - uses: actions/checkout@v4
@@ -68,14 +68,16 @@ jobs:
           fi
         shell: bash
 
-      - name: Rename and prepare output file
+      - name: Package as ZIP with correct internal name
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            # Windows: dist/喜贴绘制工具.exe already exists
-            cp "dist/${{ matrix.app-name }}.exe" "./${{ matrix.output-file }}"
+            # Windows: exe is already named correctly in dist/
+            cd dist
+            7z a "../${{ matrix.zip-name }}" "${{ matrix.app-name }}.exe"
           else
-            # macOS: move .app bundle to root
-            cp -R "dist/${{ matrix.app-name }}.app" "./${{ matrix.output-file }}"
+            # macOS: .app bundle is a directory
+            cd dist
+            zip -r "../${{ matrix.zip-name }}" "${{ matrix.app-name }}.app"
           fi
         shell: bash
 
@@ -83,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-build
-          path: ${{ github.workspace }}/${{ matrix.output-file }}
+          path: ${{ github.workspace }}/${{ matrix.zip-name }}
 
   release:
     needs: build
@@ -106,8 +108,8 @@ jobs:
           name: Release V1.0
           body: |
             🎨 喜贴绘制工具 v1.0  
-            - Windows: 喜贴绘制工具.exe  
-            - macOS: 喜贴绘制工具.app
+            - Windows x64: 解压后运行 **喜贴绘制工具.exe**  
+            - macOS x64: 解压后将 **喜贴绘制工具.app** 拖入 Applications 使用
           files: |
-            artifacts/windows-latest-build/喜贴绘制工具.exe
-            artifacts/macos-13-build/喜贴绘制工具.app
+            artifacts/windows-latest-build/喜贴绘制工具-windows-x64.zip
+            artifacts/macos-13-build/喜贴绘制工具-macOS-x64.zip
