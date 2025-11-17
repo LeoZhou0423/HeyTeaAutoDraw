@@ -19,16 +19,14 @@ jobs:
         include:
           - os: windows-latest
             python-version: '3.9.9'
-            architecture: 'x64'
-            app-name: main_app
+            app-name: 喜贴绘制工具
             icon: ''
-            asset-name: main_app-windows-x64.zip
+            output-file: 喜贴绘制工具.exe
           - os: macos-13
             python-version: '3.9.9'
-            architecture: 'x64'
-            app-name: HeyTeaAutoDraw
+            app-name: 喜贴绘制工具
             icon: logo.icns
-            asset-name: HeyTeaAutoDraw-macOS-x64.zip
+            output-file: 喜贴绘制工具.app
 
     steps:
       - uses: actions/checkout@v4
@@ -38,12 +36,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # 安装依赖（跨平台兼容）
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip setuptools wheel pyinstaller
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        shell: bash  # 强制使用 bash，即使在 Windows 上（GitHub Actions 提供）
+        shell: bash
 
       - name: Verify logo.icns exists (macOS only)
         if: matrix.os == 'macos-13'
@@ -58,27 +55,27 @@ jobs:
         run: |
           echo "Building for ${{ matrix.os }}"
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            python -m PyInstaller -F -n ${{ matrix.app-name }} --paths=./src main.py
+            python -m PyInstaller -F -n "${{ matrix.app-name }}" --paths=./src main.py
           else
             python -m PyInstaller \
               --windowed \
-              --name ${{ matrix.app-name }} \
+              --name "${{ matrix.app-name }}" \
               --clean \
               --noconfirm \
-              --icon=${{ matrix.icon }} \
-              --add-data='logo.icns:.' \
+              --icon="${{ matrix.icon }}" \
+              --add-data="logo.icns:." \
               main.py
           fi
         shell: bash
 
-      - name: Package as ZIP
+      - name: Rename and prepare output file
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cd dist
-            7z a ../${{ matrix.asset-name }} ${{ matrix.app-name }}.exe
+            # Windows: dist/喜贴绘制工具.exe already exists
+            cp "dist/${{ matrix.app-name }}.exe" "./${{ matrix.output-file }}"
           else
-            cd dist
-            zip -r ../${{ matrix.asset-name }} ${{ matrix.app-name }}.app
+            # macOS: move .app bundle to root
+            cp -R "dist/${{ matrix.app-name }}.app" "./${{ matrix.output-file }}"
           fi
         shell: bash
 
@@ -86,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-build
-          path: ${{ github.workspace }}/${{ matrix.asset-name }}
+          path: ${{ github.workspace }}/${{ matrix.output-file }}
 
   release:
     needs: build
@@ -108,9 +105,9 @@ jobs:
           tag_name: V1.0
           name: Release V1.0
           body: |
-            🚀 Cross-platform builds:
-            - Windows x64 (standalone .exe in ZIP)
-            - macOS x64 (.app bundle in ZIP)
+            🎨 喜贴绘制工具 v1.0  
+            - Windows: 喜贴绘制工具.exe  
+            - macOS: 喜贴绘制工具.app
           files: |
-            artifacts/windows-latest-build/main_app-windows-x64.zip
-            artifacts/macos-13-build/HeyTeaAutoDraw-macOS-x64.zip
+            artifacts/windows-latest-build/喜贴绘制工具.exe
+            artifacts/macos-13-build/喜贴绘制工具.app
