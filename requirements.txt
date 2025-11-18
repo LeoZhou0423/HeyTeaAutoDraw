@@ -6,3 +6,5 @@ pynput
 scikit-image
 Pillow
 pyinstaller
+pygetwindow
+
