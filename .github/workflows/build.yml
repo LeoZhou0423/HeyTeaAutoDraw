@@ -73,8 +73,8 @@ jobs:
               --paths=./src \
               main.py
           else
+            # macOS: 移除 --windowed，保留控制台用于调试
             python -m PyInstaller \
-              --windowed \
               --name "${{ matrix.app-name }}" \
               --clean \
               --noconfirm \
